@@ -179,7 +179,8 @@ class SpeedMeterService : Service() {
         // The icon depends on the padding setting as well as the text,
         // so a padding change re-renders even when the value is static
         // (important in the lab, where padding is tuned while idle).
-        val iconKey = text + "@" + Prefs.iconPaddingPercent(this)
+        val iconKey = text + "@" + Prefs.iconPaddingPercent(this) +
+            "w" + Prefs.fontWeight(this)
         if (iconKey == lastIconKey) return
         lastIconKey = iconKey
         lastText = text
@@ -231,9 +232,18 @@ class SpeedMeterService : Service() {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val number = text.removeSuffix(" MB/s")
+        val weight = Prefs.fontWeight(this)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            typeface = Typeface.DEFAULT_BOLD
+            // Weighted typeface from the system default (API 28+);
+            // on older levels approximate with bold on/off.
+            typeface = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                Typeface.create(Typeface.DEFAULT, weight, false)
+            } else if (weight >= 600) {
+                Typeface.DEFAULT_BOLD
+            } else {
+                Typeface.DEFAULT
+            }
             textAlign = Paint.Align.LEFT
         }
         val padPx = size * Prefs.iconPaddingPercent(this) / 100f

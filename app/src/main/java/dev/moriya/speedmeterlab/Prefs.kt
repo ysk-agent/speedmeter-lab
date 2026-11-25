@@ -15,6 +15,11 @@ object Prefs {
     val ICON_PADDING_OPTIONS = intArrayOf(0, 5, 10, 15, 20, 25)
     const val DEFAULT_ICON_PADDING = 5
 
+    private const val KEY_FONT_WEIGHT = "font_weight"
+
+    val FONT_WEIGHT_OPTIONS = intArrayOf(300, 400, 500, 600, 700, 800, 900)
+    const val DEFAULT_FONT_WEIGHT = 700
+
     val INTERVALS_SEC = intArrayOf(1, 2, 3, 5, 10)
     const val DEFAULT_INTERVAL_SEC = 1
 
@@ -76,6 +81,18 @@ object Prefs {
         require(percent in ICON_PADDING_OPTIONS)
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .edit().putInt(KEY_ICON_PADDING, percent).apply()
+    }
+
+    fun fontWeight(context: Context): Int {
+        val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getInt(KEY_FONT_WEIGHT, DEFAULT_FONT_WEIGHT)
+        return if (v in FONT_WEIGHT_OPTIONS) v else DEFAULT_FONT_WEIGHT
+    }
+
+    fun setFontWeight(context: Context, weight: Int) {
+        require(weight in FONT_WEIGHT_OPTIONS)
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_FONT_WEIGHT, weight).apply()
     }
 
     fun setIntervalSec(context: Context, sec: Int) {

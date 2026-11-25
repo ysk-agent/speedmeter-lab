@@ -131,6 +131,11 @@ class MainActivity : Activity() {
             Prefs.ICON_PADDING_OPTIONS.indexOf(Prefs.iconPaddingPercent(this))
         ) { pos -> Prefs.setIconPaddingPercent(this, Prefs.ICON_PADDING_OPTIONS[pos]) }
 
+        addSpinnerRow(root, "Font weight",
+            Prefs.FONT_WEIGHT_OPTIONS.map { "$it" },
+            Prefs.FONT_WEIGHT_OPTIONS.indexOf(Prefs.fontWeight(this))
+        ) { pos -> Prefs.setFontWeight(this, Prefs.FONT_WEIGHT_OPTIONS[pos]) }
+
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
         } catch (e: PackageManager.NameNotFoundException) {
