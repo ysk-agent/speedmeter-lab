@@ -55,7 +55,7 @@ class MainActivity : Activity() {
         }
 
         speedView = TextView(this).apply {
-            text = "0.0 MB/s"
+            text = "0.00 MB/s"
             textSize = 44f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -102,6 +102,19 @@ class MainActivity : Activity() {
         }
         root.addView(spinner)
 
+        val smoothingSwitch = Switch(this).apply {
+            text = "Smoothing (EMA)"
+            textSize = 20f
+            isChecked = Prefs.isSmoothing(this@MainActivity)
+            setOnCheckedChangeListener { _, checked ->
+                Prefs.setSmoothing(this@MainActivity, checked)
+            }
+        }
+        root.addView(smoothingSwitch, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = 48 })
+
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
         } catch (e: PackageManager.NameNotFoundException) {
@@ -144,7 +157,7 @@ class MainActivity : Activity() {
             startForegroundService(intent)
         } else {
             stopService(intent)
-            speedView.text = "0.0 MB/s"
+            speedView.text = "0.00 MB/s"
         }
     }
 

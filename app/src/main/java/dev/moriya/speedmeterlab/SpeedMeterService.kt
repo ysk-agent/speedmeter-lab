@@ -49,6 +49,7 @@ class SpeedMeterService : Service() {
     private var lastTotalBytes = -1L
     private var lastSampleNanos = 0L
     private var lastText: String? = null
+    private val smoother = SpeedSmoother()
 
     private val tick = object : Runnable {
         override fun run() {
@@ -87,7 +88,7 @@ class SpeedMeterService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // (Re)post the foreground notification, then (re)arm polling.
-        startForeground(NOTIFICATION_ID, buildNotification(lastText ?: "0.0 MB/s"))
+        startForeground(NOTIFICATION_ID, buildNotification(lastText ?: "0.00 MB/s"))
         if (screenOn) startPolling() else stopPolling()
         return START_STICKY
     }
@@ -112,6 +113,7 @@ class SpeedMeterService : Service() {
         // Re-take the baseline so the first sample after (re)start is clean.
         lastTotalBytes = -1L
         lastText = null
+        smoother.reset()
         polling = true
         handler?.removeCallbacks(tick)
         handler?.post(tick)
@@ -126,7 +128,7 @@ class SpeedMeterService : Service() {
         val rx = TrafficStats.getTotalRxBytes()
         val tx = TrafficStats.getTotalTxBytes()
         if (rx == TrafficStats.UNSUPPORTED.toLong() || tx == TrafficStats.UNSUPPORTED.toLong()) {
-            updateText("0.0 MB/s")
+            updateText("0.00 MB/s")
             return
         }
         val total = rx + tx
@@ -134,7 +136,7 @@ class SpeedMeterService : Service() {
         if (lastTotalBytes < 0L) {
             lastTotalBytes = total
             lastSampleNanos = now
-            updateText("0.0 MB/s")
+            updateText("0.00 MB/s")
             return
         }
         val deltaBytes = total - lastTotalBytes
@@ -145,7 +147,12 @@ class SpeedMeterService : Service() {
         // A negative delta means the counter reset (e.g. reboot); the
         // baseline above has already been re-taken, so just skip.
         if (deltaBytes < 0L) return
-        updateText(SpeedFormat.format(deltaBytes / deltaSec))
+        val rawBps = deltaBytes / deltaSec
+        // The EMA is fed on every sample so toggling the switch
+        // mid-run switches to an already-primed value.
+        val smoothedBps = smoother.update(rawBps)
+        val displayBps = if (Prefs.isSmoothing(this)) smoothedBps else rawBps
+        updateText(SpeedFormat.format(displayBps))
     }
 
     private fun updateText(text: String) {

@@ -10,5 +10,6 @@ OUT="$PWD/build-tests"
 rm -rf "$OUT"; mkdir -p "$OUT"
 "$KOTLINC" -d "$OUT/tests.jar" \
   app/src/main/java/dev/moriya/speedmeterlab/SpeedFormat.kt \
+  app/src/main/java/dev/moriya/speedmeterlab/SpeedSmoother.kt \
   tests/SpeedFormatTest.kt
 java -cp "$OUT/tests.jar:$KOTLIN_STDLIB" dev.moriya.speedmeterlab.SpeedFormatTestKt
