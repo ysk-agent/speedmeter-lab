@@ -126,10 +126,10 @@ class MainActivity : Activity() {
             SpeedSmoother.WINDOW_OPTIONS.indexOf(Prefs.emaWindow(this))
         ) { pos -> Prefs.setEmaWindow(this, SpeedSmoother.WINDOW_OPTIONS[pos]) }
 
-        addSpinnerRow(root, "Unit font size (%)",
-            Prefs.UNIT_RATIO_OPTIONS.map { "$it%" },
-            Prefs.UNIT_RATIO_OPTIONS.indexOf(Prefs.unitRatioPercent(this))
-        ) { pos -> Prefs.setUnitRatioPercent(this, Prefs.UNIT_RATIO_OPTIONS[pos]) }
+        addSpinnerRow(root, "Icon padding (%)",
+            Prefs.ICON_PADDING_OPTIONS.map { "$it%" },
+            Prefs.ICON_PADDING_OPTIONS.indexOf(Prefs.iconPaddingPercent(this))
+        ) { pos -> Prefs.setIconPaddingPercent(this, Prefs.ICON_PADDING_OPTIONS[pos]) }
 
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"

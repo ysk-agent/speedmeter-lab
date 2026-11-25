@@ -49,6 +49,7 @@ class SpeedMeterService : Service() {
     private var lastTotalBytes = -1L
     private var lastSampleNanos = 0L
     private var lastText: String? = null
+    private var lastIconKey: String? = null
     private val smoother = SpeedSmoother()
 
     private val tick = object : Runnable {
@@ -113,6 +114,7 @@ class SpeedMeterService : Service() {
         // Re-take the baseline so the first sample after (re)start is clean.
         lastTotalBytes = -1L
         lastText = null
+        lastIconKey = null
         smoother.reset()
         polling = true
         handler?.removeCallbacks(tick)
@@ -159,7 +161,12 @@ class SpeedMeterService : Service() {
     private fun zeroText(): String = SpeedFormat.format(0.0, Prefs.decimals(this))
 
     private fun updateText(text: String) {
-        if (text == lastText) return
+        // The icon depends on the padding setting as well as the text,
+        // so a padding change re-renders even when the value is static
+        // (important in the lab, where padding is tuned while idle).
+        val iconKey = text + "@" + Prefs.iconPaddingPercent(this)
+        if (iconKey == lastIconKey) return
+        lastIconKey = iconKey
         lastText = text
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, buildNotification(text))
@@ -187,9 +194,10 @@ class SpeedMeterService : Service() {
     }
 
     /**
-     * Renders the speed string as a status-bar icon bitmap: the numeric
-     * part large on top, "MB/s" small below. Text size shrinks to fit
-     * when the number grows (e.g. "99.9").
+     * Renders the speed as a status-bar icon bitmap: the number only,
+     * no unit (decided 2026-11-25 — the unit font-ratio setting went
+     * away with it). The number is centred and scaled to fit inside
+     * the configured padding on all sides.
      */
     private fun renderIcon(text: String): Bitmap {
         val size = 96
@@ -201,13 +209,11 @@ class SpeedMeterService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             textAlign = Paint.Align.CENTER
         }
-        val numberSize = fitTextSize(paint, number, 88f, 52f)
-        paint.textSize = numberSize
-        canvas.drawText(number, size / 2f, 52f, paint)
-        // The unit's size follows the (possibly shrunk) number size by
-        // the configured ratio, so the proportion holds at any width.
-        paint.textSize = numberSize * Prefs.unitRatioPercent(this) / 100f
-        canvas.drawText("MB/s", size / 2f, 86f, paint)
+        val padPx = size * Prefs.iconPaddingPercent(this) / 100f
+        val avail = size - 2 * padPx
+        paint.textSize = fitTextSize(paint, number, avail, avail)
+        val y = size / 2f - (paint.ascent() + paint.descent()) / 2f
+        canvas.drawText(number, size / 2f, y, paint)
         return bitmap
     }
 

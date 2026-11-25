@@ -11,10 +11,11 @@ without reinstalling Moka VPN for every candidate value.
   shows the current speed in the status bar. No recording, no logs.
 - Display is always in MB/s (1 MB = 1,000,000 bytes); the number of
   decimals is selectable (0 / 1 / 2, default 2, e.g. "1.14 MB/s").
-  The notification icon is a bitmap rendered from the string and is
-  updated only when the string changes. The unit's font size in the
-  icon follows the number's by a selectable ratio
-  (40 / 50 / 65 / 80 / 100 percent, default 50).
+  The notification icon is a bitmap showing the number only (no
+  unit), updated only when the string changes. The icon's padding
+  is selectable (0 / 5 / 10 / 15 / 20 / 25 percent of the icon size,
+  default 5), and a padding change re-renders the icon even when
+  the value is static.
 - Sampling interval is selectable at runtime from a dropdown:
   1 / 2 / 3 / 5 / 10 seconds, default 1 second.
 - An optional smoothing switch applies an exponential moving average

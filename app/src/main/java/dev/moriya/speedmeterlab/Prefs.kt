@@ -10,10 +10,10 @@ object Prefs {
     private const val KEY_SMOOTHING = "smoothing_ema"
     private const val KEY_DECIMALS = "decimals"
     private const val KEY_EMA_WINDOW = "ema_window"
-    private const val KEY_UNIT_RATIO = "unit_ratio_percent"
+    private const val KEY_ICON_PADDING = "icon_padding_percent"
 
-    val UNIT_RATIO_OPTIONS = intArrayOf(40, 50, 65, 80, 100)
-    const val DEFAULT_UNIT_RATIO = 50
+    val ICON_PADDING_OPTIONS = intArrayOf(0, 5, 10, 15, 20, 25)
+    const val DEFAULT_ICON_PADDING = 5
 
     val INTERVALS_SEC = intArrayOf(1, 2, 3, 5, 10)
     const val DEFAULT_INTERVAL_SEC = 1
@@ -66,16 +66,16 @@ object Prefs {
             .edit().putInt(KEY_EMA_WINDOW, window).apply()
     }
 
-    fun unitRatioPercent(context: Context): Int {
+    fun iconPaddingPercent(context: Context): Int {
         val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .getInt(KEY_UNIT_RATIO, DEFAULT_UNIT_RATIO)
-        return if (v in UNIT_RATIO_OPTIONS) v else DEFAULT_UNIT_RATIO
+            .getInt(KEY_ICON_PADDING, DEFAULT_ICON_PADDING)
+        return if (v in ICON_PADDING_OPTIONS) v else DEFAULT_ICON_PADDING
     }
 
-    fun setUnitRatioPercent(context: Context, percent: Int) {
-        require(percent in UNIT_RATIO_OPTIONS)
+    fun setIconPaddingPercent(context: Context, percent: Int) {
+        require(percent in ICON_PADDING_OPTIONS)
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .edit().putInt(KEY_UNIT_RATIO, percent).apply()
+            .edit().putInt(KEY_ICON_PADDING, percent).apply()
     }
 
     fun setIntervalSec(context: Context, sec: Int) {
