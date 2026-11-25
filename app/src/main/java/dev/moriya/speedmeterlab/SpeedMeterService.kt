@@ -196,8 +196,12 @@ class SpeedMeterService : Service() {
     /**
      * Renders the speed as a status-bar icon bitmap: the number only,
      * no unit (decided 2026-11-25 — the unit font-ratio setting went
-     * away with it). The number is centred and scaled to fit inside
-     * the configured padding on all sides.
+     * away with it). Sizing and centring use the ink bounds
+     * (Paint.getTextBounds), not the font metrics: the font's own
+     * top/ascent/descent reserves would otherwise add invisible
+     * padding on top of the configured one and shift the visual
+     * centre. With ink bounds, the padding setting is the visual
+     * padding — the number's ink touches the padding box exactly.
      */
     private fun renderIcon(text: String): Bitmap {
         val size = 96
@@ -207,24 +211,27 @@ class SpeedMeterService : Service() {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             typeface = Typeface.DEFAULT_BOLD
-            textAlign = Paint.Align.CENTER
+            textAlign = Paint.Align.LEFT
         }
         val padPx = size * Prefs.iconPaddingPercent(this) / 100f
         val avail = size - 2 * padPx
-        paint.textSize = fitTextSize(paint, number, avail, avail)
-        val y = size / 2f - (paint.ascent() + paint.descent()) / 2f
-        canvas.drawText(number, size / 2f, y, paint)
+        // Measure the ink box at a reference size, then scale so it
+        // fits the available box exactly (ink scales linearly).
+        val bounds = android.graphics.Rect()
+        paint.textSize = 100f
+        paint.getTextBounds(number, 0, number.length, bounds)
+        val scale = minOf(
+            avail / bounds.width().toFloat(),
+            avail / bounds.height().toFloat()
+        )
+        paint.textSize = 100f * scale
+        paint.getTextBounds(number, 0, number.length, bounds)
+        // Draw so the ink box itself is centred: (left, top) of the
+        // bounds are relative to the (x, y) draw origin.
+        val x = size / 2f - (bounds.left + bounds.right) / 2f
+        val y = size / 2f - (bounds.top + bounds.bottom) / 2f
+        canvas.drawText(number, x, y, paint)
         return bitmap
-    }
-
-    private fun fitTextSize(paint: Paint, text: String, maxWidth: Float, startSize: Float): Float {
-        var size = startSize
-        paint.textSize = size
-        while (paint.measureText(text) > maxWidth && size > 10f) {
-            size -= 2f
-            paint.textSize = size
-        }
-        return size
     }
 
     private fun createChannel() {

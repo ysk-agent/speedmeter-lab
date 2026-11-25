@@ -15,7 +15,9 @@ without reinstalling Moka VPN for every candidate value.
   unit), updated only when the string changes. The icon's padding
   is selectable (0 / 5 / 10 / 15 / 20 / 25 percent of the icon size,
   default 5), and a padding change re-renders the icon even when
-  the value is static.
+  the value is static. Sizing and centring use the ink bounds
+  (Paint.getTextBounds), so the padding setting is the visual
+  padding — the font metrics' own reserves add nothing on top.
 - Sampling interval is selectable at runtime from a dropdown:
   1 / 2 / 3 / 5 / 10 seconds, default 1 second.
 - An optional smoothing switch applies an exponential moving average
