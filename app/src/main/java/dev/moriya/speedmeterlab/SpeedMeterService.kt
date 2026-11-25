@@ -40,6 +40,19 @@ class SpeedMeterService : Service() {
         private const val CHANNEL_ID = "speed_meter"
         private const val NOTIFICATION_ID = 1
         private const val MIN_TEXT_SCALE_X = 0.55f
+
+        /**
+         * True while the service instance is alive. The activity uses
+         * this to reconcile the persisted enabled preference with
+         * reality: an app update (or a crash, or a reboot) kills the
+         * service but leaves the preference on, and the switch —
+         * restored from the preference — then showed ON with nothing
+         * running and the initial value never updating. That was the
+         * actual cause of the "not displayed / initial value wrong"
+         * reports on 2026-11-25/26, not the icon rendering.
+         */
+        @Volatile
+        var running = false
     }
 
     private var thread: HandlerThread? = null
@@ -78,6 +91,7 @@ class SpeedMeterService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        running = true
         createChannel()
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         screenOn = pm.isInteractive
@@ -110,6 +124,7 @@ class SpeedMeterService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         stopPolling()
         try {
             unregisterReceiver(screenReceiver)

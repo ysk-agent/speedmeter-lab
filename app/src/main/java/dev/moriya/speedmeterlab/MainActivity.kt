@@ -161,6 +161,15 @@ class MainActivity : Activity() {
         registerReceiver(speedReceiver, IntentFilter(ACTION_SPEED_UPDATE),
             Context.RECEIVER_NOT_EXPORTED)
         meterSwitch.isChecked = Prefs.isEnabled(this)
+        // Reconcile the persisted ON preference with the service's
+        // actual state. Setting the switch above does not fire the
+        // listener when the state is unchanged, so after an app
+        // update killed the service the switch showed ON while
+        // nothing ran. Start the service here if it should be on
+        // but is not.
+        if (Prefs.isEnabled(this) && !SpeedMeterService.running) {
+            startForegroundService(Intent(this, SpeedMeterService::class.java))
+        }
     }
 
     override fun onPause() {
