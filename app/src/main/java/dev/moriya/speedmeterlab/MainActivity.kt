@@ -136,6 +136,11 @@ class MainActivity : Activity() {
             Prefs.FONT_WEIGHT_OPTIONS.indexOf(Prefs.fontWeight(this))
         ) { pos -> Prefs.setFontWeight(this, Prefs.FONT_WEIGHT_OPTIONS[pos]) }
 
+        addSpinnerRow(root, "Vertical stretch",
+            Prefs.STRETCH_OPTIONS.map { Prefs.stretchLabel(it) },
+            Prefs.STRETCH_OPTIONS.indexOf(Prefs.stretchScaleXPercent(this))
+        ) { pos -> Prefs.setStretchScaleXPercent(this, Prefs.STRETCH_OPTIONS[pos]) }
+
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
         } catch (e: PackageManager.NameNotFoundException) {

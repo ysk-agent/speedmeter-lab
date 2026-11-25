@@ -20,6 +20,21 @@ object Prefs {
     val FONT_WEIGHT_OPTIONS = intArrayOf(300, 400, 500, 600, 700, 800, 900)
     const val DEFAULT_FONT_WEIGHT = 700
 
+    private const val KEY_STRETCH = "stretch_scalex_percent"
+
+    /**
+     * Horizontal scale (textScaleX) in percent; 0 means Auto, where
+     * the condensation is derived from the width overflow as before.
+     * A fixed value of e.g. 70 condenses the glyphs to 70 percent
+     * width, which reads as a vertical stretch of about 1.43x.
+     */
+    val STRETCH_OPTIONS = intArrayOf(0, 100, 90, 80, 70, 60, 50)
+    const val DEFAULT_STRETCH = 0
+
+    fun stretchLabel(scaleXPercent: Int): String =
+        if (scaleXPercent == 0) "Auto"
+        else "x" + String.format("%.2f", 100f / scaleXPercent).trimEnd('0').trimEnd('.')
+
     val INTERVALS_SEC = intArrayOf(1, 2, 3, 5, 10)
     const val DEFAULT_INTERVAL_SEC = 1
 
@@ -93,6 +108,19 @@ object Prefs {
         require(weight in FONT_WEIGHT_OPTIONS)
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .edit().putInt(KEY_FONT_WEIGHT, weight).apply()
+    }
+
+    /** Horizontal scale percent, or 0 for Auto. */
+    fun stretchScaleXPercent(context: Context): Int {
+        val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getInt(KEY_STRETCH, DEFAULT_STRETCH)
+        return if (v in STRETCH_OPTIONS) v else DEFAULT_STRETCH
+    }
+
+    fun setStretchScaleXPercent(context: Context, percent: Int) {
+        require(percent in STRETCH_OPTIONS)
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_STRETCH, percent).apply()
     }
 
     fun setIntervalSec(context: Context, sec: Int) {

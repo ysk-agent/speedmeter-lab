@@ -195,7 +195,8 @@ class SpeedMeterService : Service() {
         // so a padding change re-renders even when the value is static
         // (important in the lab, where padding is tuned while idle).
         val iconKey = text + "@" + Prefs.iconPaddingPercent(this) +
-            "w" + Prefs.fontWeight(this)
+            "w" + Prefs.fontWeight(this) +
+            "s" + Prefs.stretchScaleXPercent(this)
         if (iconKey == lastIconKey) return
         lastIconKey = iconKey
         lastText = text
@@ -251,8 +252,23 @@ class SpeedMeterService : Service() {
      * tall, so a uniform fit leaves most of the height unused and
      * the digits look small next to the status-bar clock. Instead
      * the ink height fills the available box, and any horizontal
-     * overflow is absorbed by condensing the glyphs (textScaleX)
-     * down to a floor of 0.55; only beyond that does the size shrink.
+     * overflow is absorbed by condensing the glyphs (textScaleX).
+     *
+     * Two refinements (Moriya, 2026-11-26):
+     * - The condensation is adjustable: Auto derives it from the
+     *   overflow (floor 0.55) as before; a fixed setting pins
+     *   textScaleX to the chosen value, which reads as a vertical
+     *   stretch of 1/scaleX.
+     * - All fitting is measured against a template of the same
+     *   shape with every digit replaced by '8' (the widest digit),
+     *   not against the actual string. Fitting per string made the
+     *   height jitter slightly between values (0.0 vs 0.1 vs 0.2
+     *   have different ink widths, so the condensation — and at the
+     *   floor, the size — came out different each time). With the
+     *   template, every value of the same shape gets the identical
+     *   size and scale, hence the identical height; only the drawn
+     *   glyphs differ. The actual string's own bounds are used only
+     *   for centring.
      */
     private fun renderIcon(text: String): Bitmap {
         val size = 96
@@ -284,26 +300,42 @@ class SpeedMeterService : Service() {
         val padPx = size * Prefs.iconPaddingPercent(this) / 100f
         val avail = size - 2 * padPx
         val bounds = android.graphics.Rect()
-        // Height-first: size so the ink height fills the box.
+        // Template of the same shape, all digits '8': fitting is
+        // measured on this, never on the actual string (see doc).
+        val template = number.map { if (it.isDigit()) '8' else it }.joinToString("")
+        // Height-first: size so the template's ink height fills the box.
         paint.textSize = 100f
-        paint.getTextBounds(number, 0, number.length, bounds)
+        paint.getTextBounds(template, 0, template.length, bounds)
         var textSize = 100f * (avail / bounds.height().toFloat())
         paint.textSize = textSize
-        paint.getTextBounds(number, 0, number.length, bounds)
-        // Condense horizontally if the width overflows.
-        val overflow = bounds.width().toFloat() / avail
-        if (overflow > 1f) {
-            if (overflow <= 1f / MIN_TEXT_SCALE_X) {
-                paint.textScaleX = 1f / overflow
-            } else {
-                paint.textScaleX = MIN_TEXT_SCALE_X
-                textSize /= overflow * MIN_TEXT_SCALE_X
+        paint.getTextBounds(template, 0, template.length, bounds)
+        val templateWidth = bounds.width().toFloat()
+        val stretchPercent = Prefs.stretchScaleXPercent(this)
+        if (stretchPercent > 0) {
+            // Fixed condensation. If the condensed width still
+            // overflows, shrink the size to fit (the template keeps
+            // this consistent across values of the same shape).
+            val scaleX = stretchPercent / 100f
+            paint.textScaleX = scaleX
+            if (templateWidth * scaleX > avail) {
+                textSize *= avail / (templateWidth * scaleX)
                 paint.textSize = textSize
             }
-            paint.getTextBounds(number, 0, number.length, bounds)
+        } else {
+            // Auto: condense by exactly the overflow, down to a floor.
+            val overflow = templateWidth / avail
+            if (overflow > 1f) {
+                if (overflow <= 1f / MIN_TEXT_SCALE_X) {
+                    paint.textScaleX = 1f / overflow
+                } else {
+                    paint.textScaleX = MIN_TEXT_SCALE_X
+                    textSize /= overflow * MIN_TEXT_SCALE_X
+                    paint.textSize = textSize
+                }
+            }
         }
-        // Draw so the ink box itself is centred: (left, top) of the
-        // bounds are relative to the (x, y) draw origin.
+        // Centre using the actual string's own ink bounds.
+        paint.getTextBounds(number, 0, number.length, bounds)
         val x = size / 2f - (bounds.left + bounds.right) / 2f
         val y = size / 2f - (bounds.top + bounds.bottom) / 2f
         canvas.drawText(number, x, y, paint)
