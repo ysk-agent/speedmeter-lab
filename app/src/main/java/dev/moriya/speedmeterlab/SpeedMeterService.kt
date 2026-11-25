@@ -88,7 +88,7 @@ class SpeedMeterService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // (Re)post the foreground notification, then (re)arm polling.
-        startForeground(NOTIFICATION_ID, buildNotification(lastText ?: "0.00 MB/s"))
+        startForeground(NOTIFICATION_ID, buildNotification(lastText ?: zeroText()))
         if (screenOn) startPolling() else stopPolling()
         return START_STICKY
     }
@@ -128,7 +128,7 @@ class SpeedMeterService : Service() {
         val rx = TrafficStats.getTotalRxBytes()
         val tx = TrafficStats.getTotalTxBytes()
         if (rx == TrafficStats.UNSUPPORTED.toLong() || tx == TrafficStats.UNSUPPORTED.toLong()) {
-            updateText("0.00 MB/s")
+            updateText(zeroText())
             return
         }
         val total = rx + tx
@@ -136,7 +136,7 @@ class SpeedMeterService : Service() {
         if (lastTotalBytes < 0L) {
             lastTotalBytes = total
             lastSampleNanos = now
-            updateText("0.00 MB/s")
+            updateText(zeroText())
             return
         }
         val deltaBytes = total - lastTotalBytes
@@ -150,10 +150,13 @@ class SpeedMeterService : Service() {
         val rawBps = deltaBytes / deltaSec
         // The EMA is fed on every sample so toggling the switch
         // mid-run switches to an already-primed value.
+        smoother.windowSamples = Prefs.emaWindow(this)
         val smoothedBps = smoother.update(rawBps)
         val displayBps = if (Prefs.isSmoothing(this)) smoothedBps else rawBps
-        updateText(SpeedFormat.format(displayBps))
+        updateText(SpeedFormat.format(displayBps, Prefs.decimals(this)))
     }
+
+    private fun zeroText(): String = SpeedFormat.format(0.0, Prefs.decimals(this))
 
     private fun updateText(text: String) {
         if (text == lastText) return
@@ -198,9 +201,12 @@ class SpeedMeterService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             textAlign = Paint.Align.CENTER
         }
-        paint.textSize = fitTextSize(paint, number, 88f, 52f)
+        val numberSize = fitTextSize(paint, number, 88f, 52f)
+        paint.textSize = numberSize
         canvas.drawText(number, size / 2f, 52f, paint)
-        paint.textSize = 26f
+        // The unit's size follows the (possibly shrunk) number size by
+        // the configured ratio, so the proportion holds at any width.
+        paint.textSize = numberSize * Prefs.unitRatioPercent(this) / 100f
         canvas.drawText("MB/s", size / 2f, 86f, paint)
         return bitmap
     }

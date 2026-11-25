@@ -9,15 +9,19 @@ without reinstalling Moka VPN for every candidate value.
   `dev.moriya.vpn`), signed with its own dedicated key.
 - Polls `TrafficStats.getTotalRxBytes()` / `getTotalTxBytes()` and
   shows the current speed in the status bar. No recording, no logs.
-- Display format is fixed to "X.XX MB/s" (1 MB = 1,000,000 bytes,
-  0.01 MB/s steps; 300 KB/s shows as "0.30 MB/s"). The notification
-  icon is a bitmap rendered from the string and is updated only when
-  the string changes.
+- Display is always in MB/s (1 MB = 1,000,000 bytes); the number of
+  decimals is selectable (0 / 1 / 2, default 2, e.g. "1.14 MB/s").
+  The notification icon is a bitmap rendered from the string and is
+  updated only when the string changes. The unit's font size in the
+  icon follows the number's by a selectable ratio
+  (40 / 50 / 65 / 80 / 100 percent, default 50).
 - Sampling interval is selectable at runtime from a dropdown:
   1 / 2 / 3 / 5 / 10 seconds, default 1 second.
 - An optional smoothing switch applies an exponential moving average
-  (alpha 0.4) to the displayed value, so single-sample spikes decay
-  geometrically instead of vanishing in one step. Off by default.
+  to the displayed value, so single-sample spikes decay geometrically
+  instead of vanishing in one step. Off by default. Its strength is
+  an effective window in samples (2 / 3 / 4 / 6 / 9 / 14, default 4,
+  converted with alpha = 2 / (N + 1)).
 - Polling stops while the screen is off and while the meter switch
   is off.
 

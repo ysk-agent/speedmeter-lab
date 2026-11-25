@@ -15,6 +15,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
@@ -55,7 +56,7 @@ class MainActivity : Activity() {
         }
 
         speedView = TextView(this).apply {
-            text = "0.00 MB/s"
+            text = SpeedFormat.format(0.0, Prefs.decimals(this@MainActivity))
             textSize = 44f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
@@ -115,6 +116,21 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = 48 })
 
+        addSpinnerRow(root, "Decimals",
+            SpeedFormat.DECIMALS_OPTIONS.map { "$it" },
+            SpeedFormat.DECIMALS_OPTIONS.indexOf(Prefs.decimals(this))
+        ) { pos -> Prefs.setDecimals(this, SpeedFormat.DECIMALS_OPTIONS[pos]) }
+
+        addSpinnerRow(root, "EMA window (samples)",
+            SpeedSmoother.WINDOW_OPTIONS.map { "$it" },
+            SpeedSmoother.WINDOW_OPTIONS.indexOf(Prefs.emaWindow(this))
+        ) { pos -> Prefs.setEmaWindow(this, SpeedSmoother.WINDOW_OPTIONS[pos]) }
+
+        addSpinnerRow(root, "Unit font size (%)",
+            Prefs.UNIT_RATIO_OPTIONS.map { "$it%" },
+            Prefs.UNIT_RATIO_OPTIONS.indexOf(Prefs.unitRatioPercent(this))
+        ) { pos -> Prefs.setUnitRatioPercent(this, Prefs.UNIT_RATIO_OPTIONS[pos]) }
+
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
         } catch (e: PackageManager.NameNotFoundException) {
@@ -130,7 +146,9 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = 64 })
 
-        setContentView(root)
+        val scroll = ScrollView(this)
+        scroll.addView(root)
+        setContentView(scroll)
     }
 
     override fun onResume() {
@@ -149,6 +167,40 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    private fun addSpinnerRow(
+        root: LinearLayout,
+        label: String,
+        options: List<String>,
+        currentIndex: Int,
+        onSelect: (Int) -> Unit
+    ) {
+        val labelView = TextView(this).apply {
+            text = label
+            textSize = 16f
+        }
+        root.addView(labelView, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = 32 })
+        val spinner = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, options
+            )
+            setSelection(if (currentIndex >= 0) currentIndex else 0)
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?, view: View?, position: Int, id: Long
+                ) {
+                    onSelect(position)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            }
+        }
+        root.addView(spinner)
+    }
+
     private fun onMeterToggled(checked: Boolean) {
         Prefs.setEnabled(this, checked)
         val intent = Intent(this, SpeedMeterService::class.java)
@@ -157,7 +209,7 @@ class MainActivity : Activity() {
             startForegroundService(intent)
         } else {
             stopService(intent)
-            speedView.text = "0.00 MB/s"
+            speedView.text = SpeedFormat.format(0.0, Prefs.decimals(this))
         }
     }
 

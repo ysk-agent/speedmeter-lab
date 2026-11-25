@@ -18,8 +18,8 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION_CODE=2
-VERSION_NAME=0.2.0
+VERSION_CODE=3
+VERSION_NAME=0.3.0
 
 export JAVA_HOME="$HOME/workspace/toolchains/jdk-21"
 export ANDROID_HOME="$HOME/workspace/toolchains/android-sdk"
