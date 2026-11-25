@@ -39,6 +39,7 @@ class SpeedMeterService : Service() {
         const val ACTION_APPLY = "dev.moriya.speedmeterlab.APPLY"
         private const val CHANNEL_ID = "speed_meter"
         private const val NOTIFICATION_ID = 1
+        private const val MIN_TEXT_SCALE_X = 0.55f
     }
 
     private var thread: HandlerThread? = null
@@ -202,6 +203,14 @@ class SpeedMeterService : Service() {
      * padding on top of the configured one and shift the visual
      * centre. With ink bounds, the padding setting is the visual
      * padding — the number's ink touches the padding box exactly.
+     *
+     * The fit is height-first (Moriya, 2026-11-25: "still small; it
+     * may become tall"): a multi-digit number is wider than it is
+     * tall, so a uniform fit leaves most of the height unused and
+     * the digits look small next to the status-bar clock. Instead
+     * the ink height fills the available box, and any horizontal
+     * overflow is absorbed by condensing the glyphs (textScaleX)
+     * down to a floor of 0.55; only beyond that does the size shrink.
      */
     private fun renderIcon(text: String): Bitmap {
         val size = 96
@@ -215,17 +224,25 @@ class SpeedMeterService : Service() {
         }
         val padPx = size * Prefs.iconPaddingPercent(this) / 100f
         val avail = size - 2 * padPx
-        // Measure the ink box at a reference size, then scale so it
-        // fits the available box exactly (ink scales linearly).
         val bounds = android.graphics.Rect()
+        // Height-first: size so the ink height fills the box.
         paint.textSize = 100f
         paint.getTextBounds(number, 0, number.length, bounds)
-        val scale = minOf(
-            avail / bounds.width().toFloat(),
-            avail / bounds.height().toFloat()
-        )
-        paint.textSize = 100f * scale
+        var textSize = 100f * (avail / bounds.height().toFloat())
+        paint.textSize = textSize
         paint.getTextBounds(number, 0, number.length, bounds)
+        // Condense horizontally if the width overflows.
+        val overflow = bounds.width().toFloat() / avail
+        if (overflow > 1f) {
+            if (overflow <= 1f / MIN_TEXT_SCALE_X) {
+                paint.textScaleX = 1f / overflow
+            } else {
+                paint.textScaleX = MIN_TEXT_SCALE_X
+                textSize /= overflow * MIN_TEXT_SCALE_X
+                paint.textSize = textSize
+            }
+            paint.getTextBounds(number, 0, number.length, bounds)
+        }
         // Draw so the ink box itself is centred: (left, top) of the
         // bounds are relative to the (x, y) draw origin.
         val x = size / 2f - (bounds.left + bounds.right) / 2f
