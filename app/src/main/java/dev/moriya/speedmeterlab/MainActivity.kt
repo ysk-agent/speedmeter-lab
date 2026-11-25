@@ -206,6 +206,7 @@ class MainActivity : Activity() {
         val intent = Intent(this, SpeedMeterService::class.java)
         if (checked) {
             requestNotificationPermissionIfNeeded()
+            speedView.text = SpeedFormat.format(0.0, Prefs.decimals(this))
             startForegroundService(intent)
         } else {
             stopService(intent)

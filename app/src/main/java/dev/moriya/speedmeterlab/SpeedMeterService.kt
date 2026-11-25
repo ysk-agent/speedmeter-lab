@@ -89,8 +89,22 @@ class SpeedMeterService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // (Re)post the foreground notification, then (re)arm polling.
-        startForeground(NOTIFICATION_ID, buildNotification(lastText ?: zeroText()))
+        // Always start from a deterministic 0 display (Moriya,
+        // 2026-11-25). Previously the first frame reused lastText,
+        // which survived in-process restarts, so what appeared first
+        // — a stale value or 0 — depended on how the service had been
+        // restarted. Reset all display state, post 0, then arm polling;
+        // the first real value arrives at the next tick.
+        lastText = null
+        lastIconKey = null
+        lastTotalBytes = -1L
+        smoother.reset()
+        val zero = zeroText()
+        startForeground(NOTIFICATION_ID, buildNotification(zero))
+        sendBroadcast(Intent(MainActivity.ACTION_SPEED_UPDATE).apply {
+            setPackage(packageName)
+            putExtra(MainActivity.EXTRA_SPEED_TEXT, zero)
+        })
         if (screenOn) startPolling() else stopPolling()
         return START_STICKY
     }
