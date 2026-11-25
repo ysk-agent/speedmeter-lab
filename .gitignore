@@ -1,0 +1,5 @@
+build-manual/
+build-tests/
+dist/
+*.keystore
+credentials.txt
