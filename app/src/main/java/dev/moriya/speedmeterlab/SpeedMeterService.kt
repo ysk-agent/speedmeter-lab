@@ -199,8 +199,20 @@ class SpeedMeterService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.graphics.drawable.Icon.createWithBitmap(renderIcon(text)))
+        val builder = Notification.Builder(this, CHANNEL_ID)
+        // If bitmap rendering ever fails, fall back to a system icon
+        // rather than losing the whole notification.
+        val icon = try {
+            android.graphics.drawable.Icon.createWithBitmap(renderIcon(text))
+        } catch (e: Exception) {
+            null
+        }
+        if (icon != null) {
+            builder.setSmallIcon(icon)
+        } else {
+            builder.setSmallIcon(android.R.drawable.stat_notify_sync)
+        }
+        return builder
             .setContentTitle(text)
             .setContentText("Speed Meter Lab")
             .setContentIntent(openApp)
@@ -236,9 +248,17 @@ class SpeedMeterService : Service() {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             // Weighted typeface from the system default (API 28+);
-            // on older levels approximate with bold on/off.
+            // on older levels approximate with bold on/off. The
+            // weighted create can return null or throw on fonts
+            // without weight axes — never let it take the icon down
+            // (v0.8.0 shipped without this guard and the display
+            // disappeared entirely on-device).
             typeface = if (android.os.Build.VERSION.SDK_INT >= 28) {
-                Typeface.create(Typeface.DEFAULT, weight, false)
+                try {
+                    Typeface.create(Typeface.DEFAULT, weight, false)
+                } catch (e: Exception) {
+                    null
+                } ?: Typeface.DEFAULT_BOLD
             } else if (weight >= 600) {
                 Typeface.DEFAULT_BOLD
             } else {
