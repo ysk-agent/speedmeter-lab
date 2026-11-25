@@ -194,9 +194,9 @@ class SpeedMeterService : Service() {
         // The icon depends on the padding setting as well as the text,
         // so a padding change re-renders even when the value is static
         // (important in the lab, where padding is tuned while idle).
-        val iconKey = text + "@" + Prefs.iconPaddingPercent(this) +
+        val iconKey = text + "@" + Prefs.iconPaddingTenths(this) +
             "w" + Prefs.fontWeight(this) +
-            "s" + Prefs.stretchScaleXPercent(this)
+            "s" + Prefs.stretchHundredths(this)
         if (iconKey == lastIconKey) return
         lastIconKey = iconKey
         lastText = text
@@ -255,10 +255,8 @@ class SpeedMeterService : Service() {
      * overflow is absorbed by condensing the glyphs (textScaleX).
      *
      * Two refinements (Moriya, 2026-11-26):
-     * - The condensation is adjustable: Auto derives it from the
-     *   overflow (floor 0.55) as before; a fixed setting pins
-     *   textScaleX to the chosen value, which reads as a vertical
-     *   stretch of 1/scaleX.
+     * - The condensation is adjustable with a slider as a vertical
+     *   stretch of x1.40-x1.70, applied as textScaleX = 1/stretch.
      * - All fitting is measured against a template of the same
      *   shape with every digit replaced by '8' (the widest digit),
      *   not against the actual string. Fitting per string made the
@@ -297,7 +295,7 @@ class SpeedMeterService : Service() {
             }
             textAlign = Paint.Align.LEFT
         }
-        val padPx = size * Prefs.iconPaddingPercent(this) / 100f
+        val padPx = size * Prefs.iconPaddingTenths(this) / 1000f
         val avail = size - 2 * padPx
         val bounds = android.graphics.Rect()
         // Template of the same shape, all digits '8': fitting is
@@ -310,29 +308,15 @@ class SpeedMeterService : Service() {
         paint.textSize = textSize
         paint.getTextBounds(template, 0, template.length, bounds)
         val templateWidth = bounds.width().toFloat()
-        val stretchPercent = Prefs.stretchScaleXPercent(this)
-        if (stretchPercent > 0) {
-            // Fixed condensation. If the condensed width still
-            // overflows, shrink the size to fit (the template keeps
-            // this consistent across values of the same shape).
-            val scaleX = stretchPercent / 100f
-            paint.textScaleX = scaleX
-            if (templateWidth * scaleX > avail) {
-                textSize *= avail / (templateWidth * scaleX)
-                paint.textSize = textSize
-            }
-        } else {
-            // Auto: condense by exactly the overflow, down to a floor.
-            val overflow = templateWidth / avail
-            if (overflow > 1f) {
-                if (overflow <= 1f / MIN_TEXT_SCALE_X) {
-                    paint.textScaleX = 1f / overflow
-                } else {
-                    paint.textScaleX = MIN_TEXT_SCALE_X
-                    textSize /= overflow * MIN_TEXT_SCALE_X
-                    paint.textSize = textSize
-                }
-            }
+        // Vertical stretch from the slider (x1.40-x1.70), applied as
+        // a horizontal condensation. If the condensed width still
+        // overflows, shrink the size to fit (the template keeps this
+        // consistent across values of the same shape).
+        val scaleX = 100f / Prefs.stretchHundredths(this)
+        paint.textScaleX = scaleX
+        if (templateWidth * scaleX > avail) {
+            textSize *= avail / (templateWidth * scaleX)
+            paint.textSize = textSize
         }
         // Centre using the actual string's own ink bounds.
         paint.getTextBounds(number, 0, number.length, bounds)

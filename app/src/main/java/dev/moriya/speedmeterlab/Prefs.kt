@@ -11,29 +11,37 @@ object Prefs {
     private const val KEY_DECIMALS = "decimals"
     private const val KEY_EMA_WINDOW = "ema_window"
     private const val KEY_ICON_PADDING = "icon_padding_percent"
+    private const val KEY_PADDING_TENTHS = "icon_padding_tenths"
 
-    val ICON_PADDING_OPTIONS = intArrayOf(0, 5, 10, 15, 20, 25)
-    const val DEFAULT_ICON_PADDING = 5
+    /**
+     * Icon padding in tenths of a percent, adjusted with a slider
+     * over 0.0-5.0 percent (Moriya, 2026-11-26). Migrates the old
+     * whole-percent spinner value (0/5/10/...) on first read,
+     * clamped into the slider range.
+     */
+    const val PADDING_MAX_TENTHS = 50
+    const val DEFAULT_PADDING_TENTHS = 25
 
     private const val KEY_FONT_WEIGHT = "font_weight"
 
     val FONT_WEIGHT_OPTIONS = intArrayOf(300, 400, 500, 600, 700, 800, 900)
     const val DEFAULT_FONT_WEIGHT = 700
 
-    private const val KEY_STRETCH = "stretch_scalex_percent"
+    private const val KEY_STRETCH_H = "stretch_hundredths"
 
     /**
-     * Horizontal scale (textScaleX) in percent; 0 means Auto, where
-     * the condensation is derived from the width overflow as before.
-     * A fixed value of e.g. 70 condenses the glyphs to 70 percent
-     * width, which reads as a vertical stretch of about 1.43x.
+     * Vertical stretch as hundredths (140 = x1.40), adjusted with a
+     * slider over 1.40-1.70 (Moriya, 2026-11-26 — this replaced the
+     * Auto/fixed spinner after one round). The renderer converts it
+     * to a horizontal scale: textScaleX = 100 / stretch, so x1.55
+     * condenses the glyphs to about 65 percent width.
      */
-    val STRETCH_OPTIONS = intArrayOf(0, 100, 90, 80, 70, 60, 50)
-    const val DEFAULT_STRETCH = 0
+    const val STRETCH_MIN_H = 140
+    const val STRETCH_MAX_H = 170
+    const val DEFAULT_STRETCH_H = 150
 
-    fun stretchLabel(scaleXPercent: Int): String =
-        if (scaleXPercent == 0) "Auto"
-        else "x" + String.format("%.2f", 100f / scaleXPercent).trimEnd('0').trimEnd('.')
+    fun stretchLabel(hundredths: Int): String =
+        String.format("x%.2f", hundredths / 100f)
 
     val INTERVALS_SEC = intArrayOf(1, 2, 3, 5, 10)
     const val DEFAULT_INTERVAL_SEC = 1
@@ -86,17 +94,28 @@ object Prefs {
             .edit().putInt(KEY_EMA_WINDOW, window).apply()
     }
 
-    fun iconPaddingPercent(context: Context): Int {
-        val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .getInt(KEY_ICON_PADDING, DEFAULT_ICON_PADDING)
-        return if (v in ICON_PADDING_OPTIONS) v else DEFAULT_ICON_PADDING
+    /** Icon padding in tenths of a percent, 0 (0.0%) to 50 (5.0%). */
+    fun iconPaddingTenths(context: Context): Int {
+        val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+        if (prefs.contains(KEY_PADDING_TENTHS)) {
+            val v = prefs.getInt(KEY_PADDING_TENTHS, DEFAULT_PADDING_TENTHS)
+            return if (v in 0..PADDING_MAX_TENTHS) v else DEFAULT_PADDING_TENTHS
+        }
+        if (prefs.contains(KEY_ICON_PADDING)) {
+            return (prefs.getInt(KEY_ICON_PADDING, 0) * 10)
+                .coerceIn(0, PADDING_MAX_TENTHS)
+        }
+        return DEFAULT_PADDING_TENTHS
     }
 
-    fun setIconPaddingPercent(context: Context, percent: Int) {
-        require(percent in ICON_PADDING_OPTIONS)
+    fun setIconPaddingTenths(context: Context, tenths: Int) {
+        require(tenths in 0..PADDING_MAX_TENTHS)
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .edit().putInt(KEY_ICON_PADDING, percent).apply()
+            .edit().putInt(KEY_PADDING_TENTHS, tenths).apply()
     }
+
+    fun paddingLabel(tenths: Int): String =
+        String.format("%.1f%%", tenths / 10f)
 
     fun fontWeight(context: Context): Int {
         val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -110,17 +129,17 @@ object Prefs {
             .edit().putInt(KEY_FONT_WEIGHT, weight).apply()
     }
 
-    /** Horizontal scale percent, or 0 for Auto. */
-    fun stretchScaleXPercent(context: Context): Int {
+    /** Vertical stretch in hundredths, 140 (x1.40) to 170 (x1.70). */
+    fun stretchHundredths(context: Context): Int {
         val v = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .getInt(KEY_STRETCH, DEFAULT_STRETCH)
-        return if (v in STRETCH_OPTIONS) v else DEFAULT_STRETCH
+            .getInt(KEY_STRETCH_H, DEFAULT_STRETCH_H)
+        return if (v in STRETCH_MIN_H..STRETCH_MAX_H) v else DEFAULT_STRETCH_H
     }
 
-    fun setStretchScaleXPercent(context: Context, percent: Int) {
-        require(percent in STRETCH_OPTIONS)
+    fun setStretchHundredths(context: Context, hundredths: Int) {
+        require(hundredths in STRETCH_MIN_H..STRETCH_MAX_H)
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .edit().putInt(KEY_STRETCH, percent).apply()
+            .edit().putInt(KEY_STRETCH_H, hundredths).apply()
     }
 
     fun setIntervalSec(context: Context, sec: Int) {

@@ -126,20 +126,14 @@ class MainActivity : Activity() {
             SpeedSmoother.WINDOW_OPTIONS.indexOf(Prefs.emaWindow(this))
         ) { pos -> Prefs.setEmaWindow(this, SpeedSmoother.WINDOW_OPTIONS[pos]) }
 
-        addSpinnerRow(root, "Icon padding (%)",
-            Prefs.ICON_PADDING_OPTIONS.map { "$it%" },
-            Prefs.ICON_PADDING_OPTIONS.indexOf(Prefs.iconPaddingPercent(this))
-        ) { pos -> Prefs.setIconPaddingPercent(this, Prefs.ICON_PADDING_OPTIONS[pos]) }
+        addPaddingSliderRow(root)
 
         addSpinnerRow(root, "Font weight",
             Prefs.FONT_WEIGHT_OPTIONS.map { "$it" },
             Prefs.FONT_WEIGHT_OPTIONS.indexOf(Prefs.fontWeight(this))
         ) { pos -> Prefs.setFontWeight(this, Prefs.FONT_WEIGHT_OPTIONS[pos]) }
 
-        addSpinnerRow(root, "Vertical stretch",
-            Prefs.STRETCH_OPTIONS.map { Prefs.stretchLabel(it) },
-            Prefs.STRETCH_OPTIONS.indexOf(Prefs.stretchScaleXPercent(this))
-        ) { pos -> Prefs.setStretchScaleXPercent(this, Prefs.STRETCH_OPTIONS[pos]) }
+        addStretchSliderRow(root)
 
         val installedVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
@@ -184,6 +178,79 @@ class MainActivity : Activity() {
             // Already unregistered; nothing to do.
         }
         super.onPause()
+    }
+
+    /**
+     * Vertical stretch slider, x1.40 to x1.70 in 0.01 steps
+     * (Moriya, 2026-11-26). The value label updates live while
+     * dragging; the service reads the preference on every render,
+     * and the icon re-render key includes it, so the status-bar
+     * icon follows the slider even while the value is static.
+     */
+    private fun addStretchSliderRow(root: LinearLayout) {
+        val labelView = TextView(this).apply {
+            text = "Vertical stretch: " + Prefs.stretchLabel(Prefs.stretchHundredths(this@MainActivity))
+            textSize = 16f
+        }
+        root.addView(labelView, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = 32 })
+        val slider = android.widget.SeekBar(this).apply {
+            max = Prefs.STRETCH_MAX_H - Prefs.STRETCH_MIN_H
+            progress = Prefs.stretchHundredths(this@MainActivity) - Prefs.STRETCH_MIN_H
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean
+                ) {
+                    val value = Prefs.STRETCH_MIN_H + progress
+                    Prefs.setStretchHundredths(this@MainActivity, value)
+                    labelView.text = "Vertical stretch: " + Prefs.stretchLabel(value)
+                }
+
+                override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+            })
+        }
+        root.addView(slider, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+    }
+
+    /**
+     * Icon padding slider, 0.0 to 5.0 percent in 0.1 steps
+     * (Moriya, 2026-11-26). Same live behaviour as the stretch
+     * slider: the icon re-renders as the value changes.
+     */
+    private fun addPaddingSliderRow(root: LinearLayout) {
+        val labelView = TextView(this).apply {
+            text = "Icon padding: " + Prefs.paddingLabel(Prefs.iconPaddingTenths(this@MainActivity))
+            textSize = 16f
+        }
+        root.addView(labelView, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = 32 })
+        val slider = android.widget.SeekBar(this).apply {
+            max = Prefs.PADDING_MAX_TENTHS
+            progress = Prefs.iconPaddingTenths(this@MainActivity)
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean
+                ) {
+                    Prefs.setIconPaddingTenths(this@MainActivity, progress)
+                    labelView.text = "Icon padding: " + Prefs.paddingLabel(progress)
+                }
+
+                override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+            })
+        }
+        root.addView(slider, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
     }
 
     private fun addSpinnerRow(
