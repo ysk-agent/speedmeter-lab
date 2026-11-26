@@ -27,7 +27,10 @@ fun main() {
     check(1_400_000.0, 0, "1 MB/s")
     check(1_600_000.0, 0, "2 MB/s")
 
-    // EMA with the default window N=4 (alpha 0.4): 0, 3.8, 0 decays geometrically.
+    // EMA with the default window N=4 (alpha 0.4). Rising uses alpha
+    // as-is; falling squares the retention (0.6^2 = 0.36), so the
+    // tail of 0, 3.8, 0 runs 1.52, 0.547, 0.197, ... — about twice
+    // as fast as the symmetric decay.
     val smoother = SpeedSmoother()
     fun checkEma(s: SpeedSmoother, rawBps: Double, expectedBps: Double) {
         val actual = s.update(rawBps)
@@ -36,16 +39,17 @@ fun main() {
     }
     checkEma(smoother, 0.0, 0.0)
     checkEma(smoother, 3_800_000.0, 1_520_000.0)
-    checkEma(smoother, 0.0, 912_000.0)
     checkEma(smoother, 0.0, 547_200.0)
+    checkEma(smoother, 0.0, 196_992.0)
     smoother.reset()
     checkEma(smoother, 2_000_000.0, 2_000_000.0)  // after reset, first sample passes through
 
-    // Window N=9 (alpha 0.2): the same spike peaks lower and decays slower.
+    // Window N=9 (alpha 0.2): the same spike peaks lower; the fall
+    // retention is 0.8^2 = 0.64.
     val slow = SpeedSmoother(9)
     checkEma(slow, 0.0, 0.0)
     checkEma(slow, 3_800_000.0, 760_000.0)
-    checkEma(slow, 0.0, 608_000.0)
+    checkEma(slow, 0.0, 486_400.0)
 
     println("SpeedFormatTest: $n assertions passed")
 }
